@@ -1,0 +1,6 @@
+[package]
+name = "tally-program"
+version = "0.1.0"
+authors = ["Matt McClellan <mcclellan.mj@gmail.com>"]
+
+[dependencies]
