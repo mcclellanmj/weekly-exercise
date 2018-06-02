@@ -3,4 +3,12 @@ name = "intermediate-route-cipher"
 version = "0.1.0"
 authors = ["Matt McClellan <mcclellan.mj@gmail.com>"]
 
+[lib]
+name = "transcipher"
+path = "src/lib.rs"
+
+[[bin]]
+name = "trans-cipher"
+path = "src/main.rs"
+
 [dependencies]

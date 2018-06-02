@@ -1,3 +1,7 @@
+extern crate transcipher;
+
+use transcipher::test;
+
 fn main() {
-    println!("Hello, world!");
+    test();
 }
