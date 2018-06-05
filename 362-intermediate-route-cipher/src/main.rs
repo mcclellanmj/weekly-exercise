@@ -1,8 +1,8 @@
 extern crate transcipher;
 
-use transcipher::{ TransCipher, TransRoute };
+use transcipher::{ TransCipher };
 
 fn main() {
-    let cipher = TransCipher::new(9, 3, TransRoute::Spiral);
+    let cipher = TransCipher::new(9, 3);
     println!("{:?}", cipher);
 }
