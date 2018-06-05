@@ -27,6 +27,7 @@ struct SpiralIterator<'a> {
     remaining_x: usize,
     remaining_y: usize,
     current_position: (usize, usize),
+    end: bool,
     direction: Direction
 }
 
@@ -34,21 +35,25 @@ impl <'a> Iterator for SpiralIterator<'a> {
     type Item = char;
 
     fn next(&mut self) -> Option<<Self as Iterator>::Item> {
-        if self.remaining_x == 0 || self.remaining_y == 0 {
-            // FIXME: Last value would never be returned
+        if self.end {
             None
+        } else if self.remaining_x == 0 || self.remaining_y == 0 {
+            self.end = true;
+            Some(*self.matrix.get_char( self.current_position.0, self.current_position.1).unwrap())
         } else {
             let next_value =
                 self.matrix.get_char(self.current_position.0, self.current_position.1).unwrap();
 
             let current_position = &mut self.current_position;
+            println!("position: [{:?}]", current_position);
+            println!("direction: [{:?}]", self.direction);
 
             match self.direction {
                 Direction::Left(remaining) => {
                     *current_position = (current_position.0 - 1, current_position.1);
 
                     if remaining <= 1 {
-                        self.direction = Direction::Up(self.remaining_y);
+                        self.direction = Direction::Up(self.remaining_y - 1);
                         self.remaining_y = self.remaining_y - 1;
                     } else {
                         self.direction = Direction::Left(remaining - 1);
@@ -58,7 +63,7 @@ impl <'a> Iterator for SpiralIterator<'a> {
                     *current_position = (current_position.0 + 1, current_position.1);
 
                     if remaining <= 1 {
-                        self.direction = Direction::Down(self.remaining_y);
+                        self.direction = Direction::Down(self.remaining_y - 1);
                         self.remaining_y = self.remaining_y - 1;
                     } else {
                         self.direction = Direction::Right(remaining - 1);
@@ -68,7 +73,7 @@ impl <'a> Iterator for SpiralIterator<'a> {
                     *current_position = (current_position.0, current_position.1 - 1);
 
                     if remaining <= 1 {
-                        self.direction = Direction::Right(self.remaining_x);
+                        self.direction = Direction::Right(self.remaining_x - 1);
                         self.remaining_x = self.remaining_x - 1;
                     } else {
                         self.direction = Direction::Up(remaining - 1);
@@ -78,7 +83,7 @@ impl <'a> Iterator for SpiralIterator<'a> {
                     *current_position = (current_position.0, current_position.1 + 1);
 
                     if remaining <= 1 {
-                        self.direction = Direction::Left(self.remaining_x);
+                        self.direction = Direction::Left(self.remaining_x - 1);
                         self.remaining_x = self.remaining_x - 1;
                     } else {
                         self.direction = Direction::Down(remaining - 1);
@@ -86,6 +91,7 @@ impl <'a> Iterator for SpiralIterator<'a> {
                 }
             }
 
+            println!("char: [{}]", next_value);
             Some(*next_value)
         }
     }
@@ -128,7 +134,7 @@ impl TransCipher {
 
     pub fn build_matrix<'a, S: Into<String>>(&'a self, to_encode: S) -> TransMatrix<'a> {
         TransMatrix {
-            array: to_encode.into().to_uppercase().chars().collect(),
+            array: to_encode.into().to_uppercase().chars().filter(|x| x.is_alphabetic()).collect(),
             dimensions: &self.dimensions
         }
     }
@@ -136,10 +142,19 @@ impl TransCipher {
     pub fn encode<S: Into<String>>(&self, route: TransRoute, to_encode: S) -> String {
         let matrix = self.build_matrix(to_encode);
 
-        let remaining_x = &self.dimensions.0;
-        let remaining_y = &self.dimensions.1;
+        let remaining_x = self.dimensions.0;
+        let remaining_y = self.dimensions.1;
 
-        unimplemented!("Still working on this")
+        let spiral_iterator = SpiralIterator {
+            matrix: &matrix,
+            remaining_x,
+            remaining_y,
+            end: false,
+            current_position: (self.dimensions.0 - 1, 0),
+            direction: Direction::Down(remaining_y - 1)
+        };
+
+        return spiral_iterator.collect()
     }
 }
 
