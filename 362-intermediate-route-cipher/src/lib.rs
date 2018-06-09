@@ -22,8 +22,8 @@ pub struct TransMatrix<'a> {
 }
 
 #[derive(Debug)]
-struct SpiralIterator<'a> {
-    matrix: &'a TransMatrix<'a>,
+struct SpiralIterator {
+    dimensions: (usize, usize),
     remaining_x: usize,
     remaining_y: usize,
     current_position: (usize, usize),
@@ -31,68 +31,74 @@ struct SpiralIterator<'a> {
     direction: Direction
 }
 
-impl <'a> Iterator for SpiralIterator<'a> {
-    type Item = char;
+impl SpiralIterator {
+    fn get_next_direction(&mut self) -> Direction {
+        match self.direction {
+            Direction::Up(remaining) => {
+                if remaining > 1 {
+                    Direction::Up(remaining - 1)
+                } else {
+                    self.remaining_x = self.remaining_x - 1;
+                    Direction::Right(self.remaining_x)
+                }
+            },
+            Direction::Down(remaining) => {
+                if remaining > 1 {
+                    Direction::Down(remaining - 1)
+                } else {
+                    self.remaining_x = self.remaining_x - 1;
+                    Direction::Left(self.remaining_x)
+                }
+            },
+            Direction::Left(remaining) => {
+                if remaining > 1 {
+                    Direction::Left(remaining - 1)
+                } else {
+                    self.remaining_y = self.remaining_y - 1;
+                    Direction::Up(self.remaining_y)
+                }
+            },
+            Direction::Right(remaining) => {
+                if remaining > 1 {
+                    Direction::Right(remaining - 1)
+                } else {
+                    self.remaining_y = self.remaining_y - 1;
+                    Direction::Down(self.remaining_y)
+                }
+            }
+        }
+    }
+
+    fn get_next_position(current_direction: &Direction, current_position: &(usize, usize)) -> (usize, usize) {
+        match current_direction {
+            Direction::Up(_) => (current_position.0, current_position.1 - 1),
+            Direction::Down(_) => (current_position.0, current_position.1 + 1),
+            Direction::Left(_) => (current_position.0 - 1, current_position.1),
+            Direction::Right(_) => (current_position.0 + 1, current_position.1),
+        }
+    }
+}
+
+impl Iterator for SpiralIterator {
+    type Item = (usize, usize);
 
     fn next(&mut self) -> Option<<Self as Iterator>::Item> {
         if self.end {
             None
         } else if self.remaining_x == 0 || self.remaining_y == 0 {
             self.end = true;
-            Some(*self.matrix.get_char( self.current_position.0, self.current_position.1).unwrap())
+            Some(self.current_position)
         } else {
-            let next_value =
-                self.matrix.get_char(self.current_position.0, self.current_position.1).unwrap();
+            let next_value = self.current_position;
 
-            let current_position = &mut self.current_position;
-            println!("position: [{:?}]", current_position);
+            println!("position: [{:?}]", self.current_position);
             println!("direction: [{:?}]", self.direction);
 
-            match self.direction {
-                Direction::Left(remaining) => {
-                    *current_position = (current_position.0 - 1, current_position.1);
+            self.current_position = SpiralIterator::get_next_position(&self.direction, &self.current_position);
+            self.direction = self.get_next_direction();
 
-                    if remaining <= 1 {
-                        self.direction = Direction::Up(self.remaining_y - 1);
-                        self.remaining_y = self.remaining_y - 1;
-                    } else {
-                        self.direction = Direction::Left(remaining - 1);
-                    }
-                },
-                Direction::Right(remaining) => {
-                    *current_position = (current_position.0 + 1, current_position.1);
-
-                    if remaining <= 1 {
-                        self.direction = Direction::Down(self.remaining_y - 1);
-                        self.remaining_y = self.remaining_y - 1;
-                    } else {
-                        self.direction = Direction::Right(remaining - 1);
-                    }
-                },
-                Direction::Up(remaining) => {
-                    *current_position = (current_position.0, current_position.1 - 1);
-
-                    if remaining <= 1 {
-                        self.direction = Direction::Right(self.remaining_x - 1);
-                        self.remaining_x = self.remaining_x - 1;
-                    } else {
-                        self.direction = Direction::Up(remaining - 1);
-                    }
-                },
-                Direction::Down(remaining) => {
-                    *current_position = (current_position.0, current_position.1 + 1);
-
-                    if remaining <= 1 {
-                        self.direction = Direction::Left(self.remaining_x - 1);
-                        self.remaining_x = self.remaining_x - 1;
-                    } else {
-                        self.direction = Direction::Down(remaining - 1);
-                    }
-                }
-            }
-
-            println!("char: [{}]", next_value);
-            Some(*next_value)
+            println!("next_value was: [{:?}]", next_value);
+            Some(next_value)
         }
     }
 }
@@ -146,7 +152,7 @@ impl TransCipher {
         let remaining_y = self.dimensions.1;
 
         let spiral_iterator = SpiralIterator {
-            matrix: &matrix,
+            dimensions: self.dimensions,
             remaining_x,
             remaining_y,
             end: false,
@@ -154,12 +160,13 @@ impl TransCipher {
             direction: Direction::Down(remaining_y - 1)
         };
 
-        return spiral_iterator.collect()
+        return spiral_iterator.map(|x| matrix.get_char(x).unwrap()).collect();
     }
 }
 
 impl <'a> TransMatrix<'a> {
-    pub fn get_char(&self, x: usize, y:usize) -> Result<&char, OutOfBoundsError> {
+    pub fn get_char(&self, input: (usize, usize)) -> Result<&char, OutOfBoundsError> {
+        let (x, y) = input;
         if x > self.dimensions.0 - 1 || y > self.dimensions.1 - 1 {
             Err(
                 OutOfBoundsError {
@@ -187,14 +194,14 @@ mod tests {
         let cipher = TransCipher::new(9, 3);
         let matrix = cipher.build_matrix("mATt");
 
-        assert_eq!(&'M', matrix.get_char(0, 0).unwrap());
-        assert_eq!(&'A', matrix.get_char(1, 0).unwrap());
-        assert_eq!(&'T', matrix.get_char(2, 0).unwrap());
-        assert_eq!(&'T', matrix.get_char(3, 0).unwrap());
-        assert_eq!(&'X', matrix.get_char(3, 1).unwap());
-        assert_eq!(&'X', matrix.get_char(8, 2).unwrap());
+        assert_eq!(&'M', matrix.get_char((0, 0)).unwrap());
+        assert_eq!(&'A', matrix.get_char((1, 0)).unwrap());
+        assert_eq!(&'T', matrix.get_char((2, 0)).unwrap());
+        assert_eq!(&'T', matrix.get_char((3, 0)).unwrap());
+        assert_eq!(&'X', matrix.get_char((3, 1)).unwrap());
+        assert_eq!(&'X', matrix.get_char((8, 2)).unwrap());
 
-        assert!(matrix.get_char(9, 0).is_err(), "Expected failure due out of bounds");
-        assert!(matrix.get_char(9, 4).is_err(), "Expected failure due out of bounds");
+        assert!(matrix.get_char((9, 0)).is_err(), "Expected failure due out of bounds");
+        assert!(matrix.get_char((9, 4)).is_err(), "Expected failure due out of bounds");
     }
 }
