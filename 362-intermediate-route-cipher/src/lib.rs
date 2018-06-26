@@ -36,15 +36,69 @@ struct SpiralIterator {
     movement: Movement
 }
 
+#[derive(Debug)]
+struct ReverseSpiralIterator {
+    bounds: (usize, usize),
+    current_position: IterationStatus,
+    movement: Movement
+}
+
+trait MatrixIterator : Iterator {
+    type Item: (usize, usize);
+
+    fn do_movement(&mut self);
+
+    fn set_current_position(&mut self, position: IterationStatus);
+
+    fn get_current_position(&self) -> IterationStatus;
+
+    fn get_bounds(&self) -> (usize, usize);
+}
+
 impl SpiralIterator {
+    fn get_next_position(current_direction: &Direction, current_position: &(usize, usize)) -> (usize, usize) {
+        match current_direction {
+            &Direction::Up => (current_position.0, current_position.1 - 1),
+            &Direction::Down => (current_position.0, current_position.1 + 1),
+            &Direction::Left => (current_position.0 - 1, current_position.1),
+            &Direction::Right => (current_position.0 + 1, current_position.1),
+        }
+    }
+}
+
+impl Iterator for MatrixIterator {
+
+    fn next(&mut self) -> Option<<Self as Iterator>::Item> {
+        match self.get_current_position() {
+            IterationStatus::Unstarted(position) => {
+                println!("unstarted position: {:?}", position);
+                self.set_current_position(IterationStatus::Started(position));
+                Some(position)
+            },
+            IterationStatus::Started(position) => {
+                let bounds = self.get_bounds();
+                if bounds.0 == 0 || bounds.1 == 0 {
+                    self.set_current_position(IterationStatus::Finished);
+                } else {
+                    self.do_movement();
+                }
+                Some(position)
+            },
+            IterationStatus::Finished => None
+        }
+    }
+}
+
+impl MatrixIterator for SpiralIterator {
     fn do_movement(&mut self) {
-        if self.movement.remaining > 1 {
+        println!("Starting move [{:?}]", self);
+        if self.movement.remaining > 0 {
             self.movement.remaining = self.movement.remaining - 1;
         } else {
             match self.movement.direction {
                 Direction::Up => {
                     self.bounds.0 = self.bounds.0 - 1;
-                    self.movement.remaining = self.bounds.0;
+                    self.movement.remaining = self.bounds.0 ;
                     self.movement.direction = Direction::Right;
                 },
                 Direction::Down => {
@@ -64,39 +118,33 @@ impl SpiralIterator {
                 }
             }
         }
+
+        let pos = match self.current_position {
+            IterationStatus::Started(pos) => pos,
+            IterationStatus::Unstarted(pos) => pos,
+            IterationStatus::Finished => panic!("Tried moving while in finished state")
+        };
+
+        println!("pos: [{:?}]", pos);
+
+        self.current_position = IterationStatus::Started(
+            SpiralIterator::get_next_position(
+                &self.movement.direction,
+                &pos));
+
+        println!("finished movement: [{:?}]", self);
     }
 
-    fn get_next_position(current_direction: &Direction, current_position: &(usize, usize)) -> (usize, usize) {
-        match current_direction {
-            &Direction::Up => (current_position.0, current_position.1 - 1),
-            &Direction::Down => (current_position.0, current_position.1 + 1),
-            &Direction::Left => (current_position.0 - 1, current_position.1),
-            &Direction::Right => (current_position.0 + 1, current_position.1),
-        }
+    fn set_current_position(&mut self, position: IterationStatus) {
+        self.current_position = position;
     }
-}
 
-impl Iterator for SpiralIterator {
-    type Item = (usize, usize);
+    fn get_current_position(&self) -> IterationStatus {
+        self.current_position
+    }
 
-    fn next(&mut self) -> Option<<Self as Iterator>::Item> {
-        match self.current_position {
-            IterationStatus::Unstarted(position) => {
-                self.current_position = IterationStatus::Started(position);
-                Some(position)
-            },
-            IterationStatus::Started(position) => {
-                if self.bounds.0 == 0 || self.bounds.1 == 0 {
-                    self.current_position = IterationStatus::Finished;
-                } else {
-                    self.current_position =
-                        IterationStatus::Started(SpiralIterator::get_next_position(&self.movement.direction, &position));
-                    self.do_movement();
-                }
-                Some(position)
-            },
-            IterationStatus::Finished => None
-        }
+    fn get_bounds(&self) -> (usize, usize) {
+        self.bounds
     }
 }
 
@@ -146,7 +194,7 @@ impl TransCipher {
         let matrix = self.build_matrix(to_encode);
 
         let spiral_iterator = SpiralIterator {
-            bounds: self.dimensions,
+            bounds: (self.dimensions.0 - 1, self.dimensions.1 - 1),
             current_position: IterationStatus::Unstarted((self.dimensions.0 - 1, 0)),
             movement: Movement {
                 direction: Direction::Down,
