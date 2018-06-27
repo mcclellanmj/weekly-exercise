@@ -17,15 +17,15 @@ struct DiceType {
 enum DiceParseError {
     NumberParseError(ParseIntError),
     StringFormatError(usize),
-    ConstraintError
+    ConstraintError(&'static str)
 }
 
 impl Error for DiceParseError {
     fn description(&self) -> &str {
         match *self {
             DiceParseError::NumberParseError(_) => "Invalid number given",
-            DiceParseError::StringFormatError(_) => "Invalid string given, required format is 1d1",
-            DiceParseError::ConstraintError => "Invalid piece given, numbers can be maximum of 100"
+            DiceParseError::StringFormatError(_) => "Invalid string given, required format is 1d2",
+            DiceParseError::ConstraintError(text) => text
         }
     }
 }
@@ -35,7 +35,7 @@ impl std::fmt::Display for DiceParseError {
         match *self {
             DiceParseError::NumberParseError(ref parse_err) => parse_err.fmt(f),
             DiceParseError::StringFormatError(length) => write!(f, "Expected to parse out 2 numbers but got {}", length),
-            DiceParseError::ConstraintError => write!(f, "Expected max of 100 exceeded")
+            DiceParseError::ConstraintError(text) => write!(f, "Constraint Violation: {}", text)
         }
     }
 }
@@ -54,12 +54,21 @@ fn parse_dice_type(dice_string: String) -> Result<DiceType, DiceParseError> {
             if size != 2 {
                 Err(DiceParseError::StringFormatError(size))
             } else if numbers.iter().any(|x| *x > 100) {
-                Err(DiceParseError::ConstraintError)
+                Err(DiceParseError::ConstraintError("Number of dice and number of sides must be less than 100"))
             } else {
-                Ok(DiceType {
-                    number_of_dice: numbers[0],
-                    sides_of_dice: numbers[1]
-                })
+                let sides = numbers[1];
+                let number = numbers[0];
+
+                if sides < 2 {
+                    Err(DiceParseError::ConstraintError("Number of sides must be more than 2"))
+                } else if number < 1 {
+                    Err(DiceParseError::ConstraintError("Number of dice must be more than 1"))
+                } else {
+                    Ok(DiceType {
+                        number_of_dice: numbers[0],
+                        sides_of_dice: numbers[1]
+                    })
+                }
             }
         },
         Err(e) => Err(DiceParseError::NumberParseError(e))
