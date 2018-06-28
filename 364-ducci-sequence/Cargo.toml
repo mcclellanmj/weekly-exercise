@@ -1,0 +1,14 @@
+[package]
+name = "ducci-sequence"
+version = "0.1.0"
+authors = ["Matt McClellan <mcclellan.mj@gmail.com>"]
+
+[dependencies]
+
+[lib]
+name = "ducci"
+path = "src/lib.rs"
+
+[[bin]]
+name = "ducci-sequence"
+path = "src/main.rs"
