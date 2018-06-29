@@ -29,6 +29,16 @@ fn parse_input(input: String) -> Result<Vec<u32>, Error> {
     Ok(return_val.unwrap())
 }
 
+fn format_line(row: &Vec<u32>) -> String {
+    let as_strings: Vec<String> = row.iter().map(|x| x.to_string()).collect();
+    let mut joined = as_strings.join("; ");
+
+    joined.insert(0, '[');
+    joined.push(']');
+
+    joined
+}
+
 fn main() {
     let unlocked_stdin = io::stdin();
     let locked_stdin = unlocked_stdin.lock();
@@ -37,6 +47,9 @@ fn main() {
         let parsed_input = parse_input(read_result.unwrap());
         let sequence: Vec<Vec<u32>> = ducci::calculate_sequence(parsed_input.unwrap());
 
-        println!("{:?}", sequence);
+        for piece in &sequence {
+            println!("{}", format_line(piece));
+        }
+        println!("{} steps", sequence.len())
     });
 }
