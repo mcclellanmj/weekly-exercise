@@ -1,33 +1,52 @@
-fn calculate_next(sequence: &Vec<u32>) -> Vec<u32> {
-    let mut copy = sequence.clone();
+use std::collections::HashSet;
 
-    let first = copy.remove(0);
-    copy.push(first);
-
-    sequence.iter().zip(copy)
-        .map(|(x, y)| (*x as i32 - y as i32).abs() as u32)
-        .collect()
+pub struct DucciIterator {
+    current: Vec<u32>,
+    seen: HashSet<Vec<u32>>
 }
 
-pub fn calculate_sequence(starting: Vec<u32>) -> Vec<Vec<u32>> {
-    let mut final_seq = vec!();
-
-    let mut next = starting;
-
-    loop {
-        if final_seq.contains(&next) || next.iter().all(|x| *x == 0u32) {
-            final_seq.push(next);
-            break;
-        } else {
-            let tmp_next = calculate_next(&next);
-            final_seq.push(next);
-            next = tmp_next;
+impl DucciIterator {
+    pub fn new(starting: Vec<u32>) -> DucciIterator {
+        DucciIterator {
+            current: starting,
+            seen: HashSet::new()
         }
     }
 
-    final_seq
+    fn is_last(&self) -> bool {
+        self.current.iter().all(|x| *x == 0u32) || self.seen.contains(&self.current)
+    }
+
+    fn calculate_next(&self) -> Vec<u32> {
+        let sequence = &self.current;
+        let mut copy = sequence.clone();
+
+        let first = copy.remove(0);
+        copy.push(first);
+
+        sequence.iter().zip(copy)
+            .map(|(x, y)| (*x as i32 - y as i32).abs() as u32)
+            .collect()
+    }
 }
 
+impl Iterator for DucciIterator {
+    type Item = Vec<u32>;
+
+    fn next(&mut self) -> Option<Vec<u32>> {
+        if self.is_last() {
+            None
+        } else {
+            let next = self.calculate_next();
+            self.seen.insert(self.current.clone());
+            self.current = next;
+
+            Some(self.current.clone())
+        }
+    }
+}
+
+/*
 #[cfg(test)]
 mod tests {
     use calculate_next;
@@ -41,3 +60,4 @@ mod tests {
         assert_eq!(vec!(653, 1201, 2209, 4063), result);
     }
 }
+*/

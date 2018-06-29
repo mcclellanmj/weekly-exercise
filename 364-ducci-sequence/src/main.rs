@@ -3,30 +3,54 @@ extern crate ducci;
 use std::io;
 use std::io::BufRead;
 use std::num::ParseIntError;
+use std::error::Error;
+use std::fmt::{Formatter, Display};
 
 #[derive(Debug)]
-enum Error {
+enum DucciError {
     ParseError(&'static str)
 }
 
-fn parse_input(input: String) -> Result<Vec<u32>, Error> {
+impl From<ParseIntError> for DucciError {
+    fn from(_: ParseIntError) -> Self {
+        DucciError::ParseError("Error while parsing integers")
+    }
+}
+
+impl Error for DucciError {
+    fn description(&self) -> &str {
+        match *self {
+            DucciError::ParseError(desc) => desc
+        }
+    }
+}
+
+impl Display for DucciError {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        match *self {
+            DucciError::ParseError(desc) => write!(f, "Error during parsing: {}", desc)
+        }
+    }
+}
+
+fn parse_input(input: String) -> Result<Vec<u32>, DucciError> {
     let mut mut_input = input;
     let first = mut_input.remove(0);
     if first != '(' {
-        return Err(Error::ParseError("Input should begin with ("));
+        return Err(DucciError::ParseError("Input should begin with ("));
     }
 
     let last = mut_input.pop().unwrap();
     if last != ')' {
-        return Err(Error::ParseError("Input should end with )"));
+        return Err(DucciError::ParseError("Input should end with )"));
     }
 
     let no_spaces = mut_input.replace(' ',"");
 
     let return_val: Result<Vec<u32>, ParseIntError> = no_spaces.split(',')
-        .map(|x| x.parse::<u32>()).collect();
+    .map(|x| x.parse::<u32>()).collect();
 
-    Ok(return_val.unwrap())
+    return_val.map_err(From::from)
 }
 
 fn format_line(row: &Vec<u32>) -> String {
@@ -45,11 +69,20 @@ fn main() {
 
     locked_stdin.lines().for_each(|read_result| {
         let parsed_input = parse_input(read_result.unwrap());
-        let sequence: Vec<Vec<u32>> = ducci::calculate_sequence(parsed_input.unwrap());
+        match parsed_input {
+            Ok(x) => {
+                let sequence: ducci::DucciIterator = ducci::DucciIterator::new(x);
+                let mut count = 0;
 
-        for piece in &sequence {
-            println!("{}", format_line(piece));
+                for piece in sequence {
+                    println!("{}", format_line(&piece));
+                    count = count + 1;
+                }
+                println!("{} steps", count)
+            },
+            Err(x) => {
+                println!("{}", x);
+            }
         }
-        println!("{} steps", sequence.len())
     });
 }
